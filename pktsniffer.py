@@ -2,44 +2,85 @@
 import argparse
 from scapy.utils import RawPcapReader
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP
+from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.all import rdpcap
 
 """
-further limits packets based on their properties
+displays the requested details from the packets that have not already been filtered, such as each of the header types as 
+well as the packet number
 """
-def limit_packets(file, protocol, packets, port, ip):
+def disp_packet_details(packets):
+    #counter for number of packets
+    packet_count=0
+
+    #iterate over the remaining packets
+    for packet in packets:
+        #display packet title
+        packet_count+=1
+        print("Headers for packet number "+str(packet_count))
+        print("")
+
+        #displays the ether header
+        if packet.haslayer(Ether):
+            print(packet[Ether].summary())
+
+        #displays the ip header
+        if packet.haslayer(IP):
+            print(packet[IP].summary())
+
+        #displays the tcp header if exists
+        if packet.haslayer(TCP):
+            print(packet[TCP].summary())
+
+        # displays the udp header if exists
+        if packet.haslayer(UDP):
+            print(packet[UDP].summary())
+
+        # displays the icmp header if exists
+        if packet.haslayer(ICMP):
+            print(packet[ICMP].summary())
+
+        print("")
+    return
+
+"""
+this function removes packets from the packet list based on those packets properties and the arguments that the
+user has given
+"""
+def limit_packets(protocol, packets, port, ip):
     #limit based on protocol
     if protocol is not None:
         for packet in packets:
-            if packet.haslayer('IP'):
-                if not packet.haslayer('TCP') and protocol=='tcp':
+            if packet.haslayer(IP):
+                if not packet.haslayer(TCP) and protocol=='tcp':
                     packets.remove(packet)
-                if not packet.haslayer('UDP') and protocol=='udp':
+                if not packet.haslayer(UDP) and protocol=='udp':
                     packets.remove(packet)
-                if not packet.haslayer('ICMP') and protocol=='icmp':
+                if not packet.haslayer(ICMP) and protocol=='icmp':
                     packets.remove(packet)
 
     #limit packets based on port
     if port is not None:
         for packet in packets:
-            if packet.haslayer('TCP'):
-                if packet['TCP'].sport != port and packet['TCP'].dport != port:
+            if packet.haslayer(TCP):
+                if packet[TCP].sport != port and packet[TCP].dport != port:
                     packets.remove(packet)
-            elif packet.haslayer('UDP'):
-                if packet['UDP'].sport != port and packet['UDP'].dport != port:
+            elif packet.haslayer(UDP):
+                if packet[UDP].sport != port and packet[UDP].dport != port:
                     packets.remove(packet)
 
     #limit packets based on ip
     if ip is not None:
         for packet in packets:
-            if packet.haslayer('IP'):
-                if packet['IP'].src!=ip and packet['IP'].dst!=ip:
+            if packet.haslayer(IP):
+                if packet[IP].src!=ip and packet[IP].dst!=ip:
                     packets.remove(packet)
-
 
     #print remaining packet length
     print("Number of  packets remaining after filtering: "+str(len(packets)))
+
+    #run the function to display the packet contents
+    disp_packet_details(packets)
     return
 
 """
@@ -54,7 +95,7 @@ def view_pcap(file, plimit, protocol, port, ip):
         while len(packets)>plimit:
             packets.pop(len(packets)-1)
     #runs the function to limit the packets further
-    limit_packets(file, protocol, packets, port, ip)
+    limit_packets(protocol, packets, port, ip)
     return
 
 """
